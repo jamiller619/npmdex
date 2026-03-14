@@ -23,6 +23,10 @@ Started: Sat Mar 14 11:44:48 EDT 2026
 - TypeScript detection: `detectTypescriptSupport()` from `typescript-detection.ts` — checks native types then DT package existence
 - Score service: `npm start` in packages/score-service, supports `--max-packages N`
 - Score weights: 40% popularity, 30% maintenance, 30% quality → 0-100 overall
+- Redis Stack (redis/redis-stack) in docker-compose.yml; RediSearch enabled by default
+- Redis connection via `createRedisClient()` from `@npmdex/shared` (uses REDIS_HOST, REDIS_PORT env vars, defaults to localhost:6379)
+- index-service `--build-index` flag populates Redis from PostgreSQL; `--incremental` only re-indexes changed packages
+- RediSearch index name: `idx:packages`, key prefix: `pkg:`, JSON documents with full-text on name/description/keywords
 
 ---
 
@@ -112,4 +116,23 @@ Started: Sat Mar 14 11:44:48 EDT 2026
   - Use log10 scale for normalizing download/star counts that span many orders of magnitude
   - Drizzle `leftJoin` + `isNull` pattern useful for finding rows without matching entries in another table
   - Batch upserts still done one-at-a-time since Drizzle doesn't support bulk upsert natively
+---
+
+## 2026-03-14 - US-007
+- Created `docker-compose.yml` at repo root with Redis Stack (redis/redis-stack) container exposing ports 6379 (Redis) and 8001 (RedisInsight)
+- Added `packages/shared/src/redis.ts` — Redis connection utility using REDIS_HOST/REDIS_PORT env vars with localhost defaults
+- Built `packages/index-service/src/redis-indexer.ts` — creates RediSearch index and populates from PostgreSQL
+- RediSearch schema: full-text fields for name (weight 10), keywords (weight 5), description (weight 2); numeric sortable fields for downloads, stars, score, etc.
+- Supports incremental updates via `npmdex:last_index_sync` key tracking last sync timestamp
+- Uses Redis pipeline (MULTI) for batch inserts of 500 packages at a time
+- Updated index-service CLI with `--build-index` and `--incremental` flags
+- Files changed: docker-compose.yml (new), packages/shared/src/redis.ts (new), packages/shared/src/index.ts, packages/shared/package.json, packages/index-service/src/redis-indexer.ts (new), packages/index-service/src/index.ts, packages/index-service/package.json, package-lock.json
+- **Learnings for future iterations:**
+  - `redis` npm package v4+ uses `createClient()` with `socket: { host, port }` config
+  - RediSearch JSON index uses `ON: 'JSON'` and `PREFIX` options in `ft.create`
+  - Field paths in JSON schema use `$.fieldName` syntax with `AS` alias for query access
+  - `redis.multi()` returns a pipeline; call `.exec()` to execute all commands in one round-trip
+  - `ft.dropIndex` throws if index doesn't exist — wrap in try/catch
+  - Redis `json.set` type is strict about `RedisJSON` — use `as any` cast for plain objects
+  - TEXT fields support WEIGHT for relevance tuning; NUMERIC fields support SORTABLE for sort queries
 ---
