@@ -6,9 +6,16 @@
   "main": "./src/index.ts",
   "types": "./src/index.ts",
   "scripts": {
+    "start": "node --import tsx src/index.ts",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@npmdex/shared": "*"
+    "@npmdex/shared": "*",
+    "cors": "^2.8.6",
+    "express": "^5.2.1"
+  },
+  "devDependencies": {
+    "@types/cors": "^2.8.19",
+    "@types/express": "^5.0.6"
   }
 }
