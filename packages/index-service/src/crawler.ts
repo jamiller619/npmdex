@@ -4,6 +4,7 @@ import {
   type Db,
   type NewPackage,
   type NewPackageMetadata,
+  type TypescriptSupport,
 } from '@npmdex/shared';
 import {
   fetchChanges,
@@ -12,6 +13,7 @@ import {
   type RegistryPackageInfo,
 } from './registry.js';
 import { readLastSeq, writeLastSeq } from './state.js';
+import { detectTypescriptSupport } from './typescript-detection.js';
 
 const BATCH_SIZE = 250;
 const REQUEST_DELAY_MS = 100;
@@ -50,12 +52,17 @@ function toPackageRow(info: RegistryPackageInfo): NewPackage {
   };
 }
 
-function toMetadataRow(info: RegistryPackageInfo, downloads: number | null): NewPackageMetadata {
+function toMetadataRow(
+  info: RegistryPackageInfo,
+  downloads: number | null,
+  tsSupport: TypescriptSupport,
+): NewPackageMetadata {
   return {
     packageName: info.name,
     weeklyDownloads: downloads,
     readmeLength: info.readme?.length ?? null,
     dependencyCount: getLatestDependencyCount(info),
+    hasTypescriptSupport: tsSupport,
   };
 }
 
@@ -66,11 +73,13 @@ async function processPackage(db: Db, name: string): Promise<boolean> {
     return false;
   }
 
-  await sleep(REQUEST_DELAY_MS);
-  const downloads = await fetchWeeklyDownloads(name);
+  const [downloads, tsSupport] = await Promise.all([
+    fetchWeeklyDownloads(name),
+    detectTypescriptSupport(info),
+  ]);
 
   const pkgRow = toPackageRow(info);
-  const metaRow = toMetadataRow(info, downloads);
+  const metaRow = toMetadataRow(info, downloads, tsSupport);
 
   await db
     .insert(packages)
@@ -97,6 +106,7 @@ async function processPackage(db: Db, name: string): Promise<boolean> {
         weeklyDownloads: metaRow.weeklyDownloads,
         readmeLength: metaRow.readmeLength,
         dependencyCount: metaRow.dependencyCount,
+        hasTypescriptSupport: metaRow.hasTypescriptSupport,
       },
     });
 

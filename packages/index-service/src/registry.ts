@@ -11,7 +11,10 @@ export interface RegistryPackageInfo {
   repository?: { type?: string; url?: string } | string;
   keywords?: string[];
   readme?: string;
-  versions?: Record<string, { dependencies?: Record<string, string> }>;
+  versions?: Record<
+    string,
+    { dependencies?: Record<string, string>; types?: string; typings?: string }
+  >;
 }
 
 export interface ChangesResponse {
