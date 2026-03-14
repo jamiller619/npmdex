@@ -27,6 +27,8 @@ Started: Sat Mar 14 11:44:48 EDT 2026
 - Redis connection via `createRedisClient()` from `@npmdex/shared` (uses REDIS_HOST, REDIS_PORT env vars, defaults to localhost:6379)
 - index-service `--build-index` flag populates Redis from PostgreSQL; `--incremental` only re-indexes changed packages
 - RediSearch index name: `idx:packages`, key prefix: `pkg:`, JSON documents with full-text on name/description/keywords
+- API service: Express on port 3001, `npm start` in packages/api, connects to Redis (not PostgreSQL) for search
+- RediSearch `ft.search` returns union type in node-redis v4 — cast result to `{ total: number; documents: Array<...> }`
 
 ---
 
@@ -135,4 +137,22 @@ Started: Sat Mar 14 11:44:48 EDT 2026
   - `ft.dropIndex` throws if index doesn't exist — wrap in try/catch
   - Redis `json.set` type is strict about `RedisJSON` — use `as any` cast for plain objects
   - TEXT fields support WEIGHT for relevance tuning; NUMERIC fields support SORTABLE for sort queries
+---
+
+## 2026-03-14 - US-008
+- Built search API using Express in packages/api with GET /api/search endpoint
+- Endpoint accepts query params: q (search text), page, limit, sort (relevance|downloads|score|stars|updated)
+- Queries RediSearch `idx:packages` index — does NOT query PostgreSQL
+- Returns paginated results with total count, package name, description, version, downloads, stars, last commit date, TS support, score, keywords, license, URLs
+- Relevance ranking uses RediSearch default text scoring (weighted by name > keywords > description from index schema)
+- Non-relevance sorts use SORTBY on numeric fields (weeklyDownloads, overallScore, githubStars, lastCommitDate)
+- Added API service to docker-compose.yml connecting to Redis on Docker network
+- Created Dockerfile for containerized deployment
+- Files changed: packages/api/src/index.ts, packages/api/src/search.ts (new), packages/api/package.json, docker-compose.yml, Dockerfile (new), package-lock.json
+- **Learnings for future iterations:**
+  - Express 5 (v5.2.1) is used — `res.json()` does not end the response chain, use `return` after sending
+  - RediSearch special characters must be escaped in queries: `@!{}()|<>-~[]"':;.,/^$*=&#?` + backtick
+  - node-redis v4 `ft.search` return type is a complex union — cast to specific shape for type safety
+  - SORTBY in ft.search options uses `{ BY: fieldName, DIRECTION: 'ASC' | 'DESC' }` format
+  - CORS middleware needed for cross-origin requests from the web frontend
 ---
