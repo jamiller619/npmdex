@@ -29,6 +29,9 @@ Started: Sat Mar 14 11:44:48 EDT 2026
 - RediSearch index name: `idx:packages`, key prefix: `pkg:`, JSON documents with full-text on name/description/keywords
 - API service: Express on port 3001, `npm start` in packages/api, connects to Redis (not PostgreSQL) for search
 - RediSearch `ft.search` returns union type in node-redis v4 — cast result to `{ total: number; documents: Array<...> }`
+- Web frontend: React + Vite in packages/web; `npm run dev` starts on port 3000 with proxy to API on 3001
+- Web tsconfig uses `moduleResolution: "bundler"` and `module: "ESNext"` (not Node16) for Vite compatibility
+- Root lint/format scripts glob `*.{ts,tsx}` to include React files
 
 ---
 
@@ -155,4 +158,19 @@ Started: Sat Mar 14 11:44:48 EDT 2026
   - node-redis v4 `ft.search` return type is a complex union — cast to specific shape for type safety
   - SORTBY in ft.search options uses `{ BY: fieldName, DIRECTION: 'ASC' | 'DESC' }` format
   - CORS middleware needed for cross-origin requests from the web frontend
+---
+
+## 2026-03-14 - US-009
+- Built React + Vite search frontend in packages/web with debounced search input, result cards, loading spinner, and empty states
+- Each result card shows: package name (links to npmjs.com), description, version, weekly downloads, GitHub stars, last commit date, TypeScript support badge (TS/DT), overall score, keywords, license, and repository link
+- Search input debounces at 300ms, uses AbortController to cancel stale requests
+- Vite dev server proxies `/api` to localhost:3001 (API service)
+- Files changed: packages/web/package.json, packages/web/tsconfig.json, packages/web/vite.config.ts (new), packages/web/index.html (new), packages/web/src/main.tsx (new), packages/web/src/App.tsx (new), packages/web/src/PackageCard.tsx (new), packages/web/src/useSearch.ts (new), packages/web/src/types.ts (new), packages/web/src/styles.css (new), package.json (updated lint/format globs)
+- **Learnings for future iterations:**
+  - Vite React apps need `moduleResolution: "bundler"` and `module: "ESNext"` in tsconfig (not Node16)
+  - Cannot use both `composite: true` and `noEmit: true` in tsconfig — for Vite, use `composite: true` with `outDir` for tsc --build
+  - Web package does NOT depend on `@npmdex/shared` — it has its own types matching the API response shape
+  - Root lint/format scripts must include `*.{ts,tsx}` glob to catch React files
+  - Vite proxy config handles CORS in development — no need for CORS on API during local dev
+  - No browser testing tools available — manual verification needed
 ---
