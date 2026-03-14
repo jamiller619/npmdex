@@ -174,3 +174,17 @@ Started: Sat Mar 14 11:44:48 EDT 2026
   - Vite proxy config handles CORS in development — no need for CORS on API during local dev
   - No browser testing tools available — manual verification needed
 ---
+
+## 2026-03-14 - US-010
+- Added sort dropdown (Relevance, Downloads, Score, Stars, Recently Updated) in toolbar above results
+- Added Previous/Next pagination controls with page count display
+- useSearch hook now manages sort and page state, resets page on query/sort changes
+- Added SortOption type to types.ts
+- Mobile responsive layout via @media (max-width: 600px): smaller padding, multi-line descriptions, compact cards
+- Files changed: packages/web/src/App.tsx, packages/web/src/useSearch.ts, packages/web/src/types.ts, packages/web/src/styles.css
+- **Learnings for future iterations:**
+  - useCallback for setQuery/setSort wrappers that also reset page to avoid stale pagination
+  - CSS `-webkit-line-clamp` for multi-line text truncation on mobile (description cards)
+  - Sort/pagination toolbar only shown when query is non-empty to keep clean empty state
+  - No browser testing tools available — manual verification needed
+---
