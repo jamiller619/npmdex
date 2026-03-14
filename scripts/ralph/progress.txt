@@ -21,6 +21,8 @@ Started: Sat Mar 14 11:44:48 EDT 2026
 - GitHub API: use `parseGitHubRepo()` from `packages/index-service/src/github.ts` for URL parsing
 - index-service CLI flags: `--full-sync`, `--enrich-github`, `--max-packages N`
 - TypeScript detection: `detectTypescriptSupport()` from `typescript-detection.ts` — checks native types then DT package existence
+- Score service: `npm start` in packages/score-service, supports `--max-packages N`
+- Score weights: 40% popularity, 30% maintenance, 30% quality → 0-100 overall
 
 ---
 
@@ -95,4 +97,19 @@ Started: Sat Mar 14 11:44:48 EDT 2026
   - Scoped packages have DT naming convention: `@scope/name` → `@types/scope__name`
   - HEAD requests to registry are efficient for existence checks (no body download)
   - `Promise.all` used to parallelize download and TS detection fetches in the crawl pipeline
+---
+
+## 2026-03-14 - US-006
+- Built score service in packages/score-service with batch scoring pipeline
+- Scorer computes 3 sub-scores: popularity (downloads+stars via log scale), maintenance (commit recency+issue ratio), quality (types+license+description+deps)
+- Sub-scores combined with weights: 40% popularity, 30% maintenance, 30% quality into 0-100 overall score
+- Only re-scores packages where `packages.updated_at > package_scores.scored_at` or never scored
+- Upserts scores via `onConflictDoUpdate` pattern
+- CLI entry point with `--max-packages N` flag, run via `npm start` in score-service
+- Files changed: packages/score-service/src/scorer.ts (new), packages/score-service/src/index.ts, packages/score-service/package.json
+- **Learnings for future iterations:**
+  - Score service follows same CLI pattern as index-service: `node --import tsx src/index.ts` with arg parsing
+  - Use log10 scale for normalizing download/star counts that span many orders of magnitude
+  - Drizzle `leftJoin` + `isNull` pattern useful for finding rows without matching entries in another table
+  - Batch upserts still done one-at-a-time since Drizzle doesn't support bulk upsert natively
 ---
