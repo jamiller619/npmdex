@@ -18,6 +18,8 @@ Started: Sat Mar 14 11:44:48 EDT 2026
 - Use `onConflictDoUpdate` for upsert patterns with Drizzle ORM
 - npm registry APIs: registry.npmjs.org for package info, replicate.npmjs.com/_changes for change feed, api.npmjs.org/downloads for download counts
 - Run `npm run format:fix` before committing to fix Prettier formatting
+- GitHub API: use `parseGitHubRepo()` from `packages/index-service/src/github.ts` for URL parsing
+- index-service CLI flags: `--full-sync`, `--enrich-github`, `--max-packages N`
 
 ---
 
@@ -61,4 +63,19 @@ Started: Sat Mar 14 11:44:48 EDT 2026
   - Repository URL in registry data comes in various formats (git+https://, git://, .git suffix) — needs normalization
   - CouchDB `/_changes` feed returns design docs (prefixed `_design/`) that should be skipped
   - `tsx` is used to run TypeScript directly in index-service (`node --import tsx src/index.ts`)
+---
+
+## 2026-03-14 - US-004
+- Built GitHub metadata enrichment pipeline in packages/index-service
+- Created `github.ts` — GitHub REST API v3 client with auth (GITHUB_TOKEN), rate limit checking, and repo info fetching
+- Created `enrich-github.ts` — enrichment pipeline that reads packages with repo URLs from DB, parses GitHub owner/repo, fetches stats, and writes to package_metadata table
+- Updated `index.ts` CLI to support `--enrich-github` flag (combinable with `--max-packages`)
+- Handles non-GitHub repos (skipped), inaccessible repos (null values), and rate limits (stops gracefully)
+- Files changed: packages/index-service/src/github.ts (new), packages/index-service/src/enrich-github.ts (new), packages/index-service/src/index.ts
+- **Learnings for future iterations:**
+  - GitHub API `pushed_at` field represents the last push date (used as last commit date proxy)
+  - GitHub API `open_issues_count` includes both issues and PRs — no separate count available without pagination
+  - Use `parseGitHubRepo()` from github.ts to extract owner/repo from various URL formats
+  - Rate limit check via `/rate_limit` endpoint before starting batch operations
+  - `--enrich-github` flag runs enrichment instead of npm crawl
 ---
