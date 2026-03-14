@@ -29,6 +29,8 @@ Started: Sat Mar 14 11:44:48 EDT 2026
 - RediSearch index name: `idx:packages`, key prefix: `pkg:`, JSON documents with full-text on name/description/keywords
 - API service: Express on port 3001, `npm start` in packages/api, connects to Redis (not PostgreSQL) for search
 - RediSearch `ft.search` returns union type in node-redis v4 — cast result to `{ total: number; documents: Array<...> }`
+- Relevance search uses two-phase approach: exact TAG match + full-text, then application-level re-ranking with quality score blending
+- To index same JSON path as both TEXT and TAG, use a duplicate field (e.g., `nameExact` copies `name`) since schema keys must be unique
 - Web frontend: React + Vite in packages/web; `npm run dev` starts on port 3000 with proxy to API on 3001
 - Web tsconfig uses `moduleResolution: "bundler"` and `module: "ESNext"` (not Node16) for Vite compatibility
 - Root lint/format scripts glob `*.{ts,tsx}` to include React files
@@ -187,4 +189,20 @@ Started: Sat Mar 14 11:44:48 EDT 2026
   - CSS `-webkit-line-clamp` for multi-line text truncation on mobile (description cards)
   - Sort/pagination toolbar only shown when query is non-empty to keep clean empty state
   - No browser testing tools available — manual verification needed
+---
+
+## 2026-03-14 - US-011
+- Implemented search relevance tuning with custom ranking in packages/api/src/search.ts
+- Added `nameExact` TAG field to RediSearch index in packages/index-service/src/redis-indexer.ts for exact name matching
+- Custom `computeRelevanceScore` function: exact name match → 100000, name prefix → 5000 (shorter names ranked higher), name contains → 1000, plus quality score (×2) and log-scale popularity as tiebreaker
+- Two-phase search for relevance: parallel exact TAG match + full-text search, then merge and re-rank
+- Non-relevance sorts (downloads, score, stars, updated) unchanged — still use RediSearch SORTBY
+- Fetches 3× candidates for re-ranking to ensure quality scores surface better packages
+- Files changed: packages/api/src/search.ts, packages/index-service/src/redis-indexer.ts
+- **Learnings for future iterations:**
+  - RediSearch JSON schema object keys must be unique — can't index same `$.path` as both TEXT and TAG; use a separate `$.nameExact` field instead
+  - TAG fields use different escaping than TEXT fields in RediSearch queries (special chars like `@` need escaping)
+  - `Promise.all` for parallel exact-match + text-search queries keeps latency low
+  - For re-ranking, fetch 3× the page size as candidate pool, then score/sort/paginate in application code
+  - RediSearch text relevance scores aren't easily accessible via node-redis v4 `ft.search` — application-level scoring is more flexible
 ---
