@@ -20,6 +20,7 @@ Started: Sat Mar 14 11:44:48 EDT 2026
 - Run `npm run format:fix` before committing to fix Prettier formatting
 - GitHub API: use `parseGitHubRepo()` from `packages/index-service/src/github.ts` for URL parsing
 - index-service CLI flags: `--full-sync`, `--enrich-github`, `--max-packages N`
+- TypeScript detection: `detectTypescriptSupport()` from `typescript-detection.ts` — checks native types then DT package existence
 
 ---
 
@@ -78,4 +79,20 @@ Started: Sat Mar 14 11:44:48 EDT 2026
   - Use `parseGitHubRepo()` from github.ts to extract owner/repo from various URL formats
   - Rate limit check via `/rate_limit` endpoint before starting batch operations
   - `--enrich-github` flag runs enrichment instead of npm crawl
+---
+
+## 2026-03-14 - US-005
+- Built TypeScript support detection in `packages/index-service/src/typescript-detection.ts`
+- Detects native TS support by checking `types`/`typings` fields on the latest version in registry data
+- Detects DefinitelyTyped support by checking if `@types/<package>` exists on npm (HEAD request)
+- Handles scoped packages (e.g., `@foo/bar` → `@types/foo__bar`)
+- Integrated into crawler pipeline: `processPackage` now calls `detectTypescriptSupport` in parallel with download fetching
+- Updated `toMetadataRow` and upsert to include `hasTypescriptSupport` field
+- Updated `RegistryPackageInfo` interface to include `types`/`typings` on version objects
+- Files changed: packages/index-service/src/typescript-detection.ts (new), packages/index-service/src/crawler.ts, packages/index-service/src/registry.ts
+- **Learnings for future iterations:**
+  - npm registry version objects contain `types` and `typings` fields for native TS support
+  - Scoped packages have DT naming convention: `@scope/name` → `@types/scope__name`
+  - HEAD requests to registry are efficient for existence checks (no body download)
+  - `Promise.all` used to parallelize download and TS detection fetches in the crawl pipeline
 ---
