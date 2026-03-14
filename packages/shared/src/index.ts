@@ -1,9 +1,4 @@
-export {
-  packages,
-  packageMetadata,
-  packageScores,
-  typescriptSupportEnum,
-} from './schema.js';
+export { packages, packageMetadata, packageScores, typescriptSupportEnum } from './schema.js';
 
 export type {
   Package,
@@ -14,3 +9,6 @@ export type {
   NewPackageScore,
   TypescriptSupport,
 } from './types.js';
+
+export { createDb } from './db.js';
+export type { Db } from './db.js';
