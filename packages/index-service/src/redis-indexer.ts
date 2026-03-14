@@ -12,6 +12,7 @@ const KEY_PREFIX = 'pkg:';
 
 interface IndexablePackage {
   name: string;
+  nameExact: string;
   description: string;
   latestVersion: string;
   license: string;
@@ -41,6 +42,7 @@ export async function createSearchIndex(redis: RedisClient): Promise<void> {
     INDEX_NAME,
     {
       '$.name': { type: 'TEXT', AS: 'name', WEIGHT: 10 },
+      '$.nameExact': { type: 'TAG', AS: 'nameExact' },
       '$.description': { type: 'TEXT', AS: 'description', WEIGHT: 2 },
       '$.keywords': { type: 'TEXT', AS: 'keywords', WEIGHT: 5 },
       '$.latestVersion': { type: 'TAG', AS: 'latestVersion' },
@@ -71,6 +73,7 @@ function toIndexable(row: {
 }): IndexablePackage {
   return {
     name: row.packages.name,
+    nameExact: row.packages.name,
     description: row.packages.description ?? '',
     latestVersion: row.packages.latestVersion ?? '',
     license: row.packages.license ?? '',
