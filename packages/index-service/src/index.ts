@@ -1,11 +1,20 @@
-import { createDb } from '@npmdex/shared';
+import { createDb, createRedisClient } from '@npmdex/shared';
 import { crawl } from './crawler.js';
 import { enrichGitHub } from './enrich-github.js';
+import { buildSearchIndex } from './redis-indexer.js';
 
 function parseArgs(args: string[]) {
-  const options: { fullSync: boolean; enrichGithub: boolean; maxPackages?: number } = {
+  const options: {
+    fullSync: boolean;
+    enrichGithub: boolean;
+    buildIndex: boolean;
+    incremental: boolean;
+    maxPackages?: number;
+  } = {
     fullSync: false,
     enrichGithub: false,
+    buildIndex: false,
+    incremental: false,
   };
 
   for (let i = 0; i < args.length; i++) {
@@ -13,6 +22,10 @@ function parseArgs(args: string[]) {
       options.fullSync = true;
     } else if (args[i] === '--enrich-github') {
       options.enrichGithub = true;
+    } else if (args[i] === '--build-index') {
+      options.buildIndex = true;
+    } else if (args[i] === '--incremental') {
+      options.incremental = true;
     } else if (args[i] === '--max-packages' && args[i + 1]) {
       options.maxPackages = parseInt(args[i + 1], 10);
       i++;
@@ -31,7 +44,22 @@ async function main() {
 
   const db = createDb();
 
-  if (options.enrichGithub) {
+  if (options.buildIndex) {
+    const redisHost = process.env.REDIS_HOST ?? 'localhost';
+    const redisPort = process.env.REDIS_PORT ?? '6379';
+    console.log(`  Mode: build search index`);
+    console.log(`  Redis: ${redisHost}:${redisPort}`);
+    console.log(`  Incremental: ${options.incremental}`);
+
+    const redis = createRedisClient();
+    await redis.connect();
+
+    try {
+      await buildSearchIndex(db, redis, { incremental: options.incremental });
+    } finally {
+      await redis.quit();
+    }
+  } else if (options.enrichGithub) {
     console.log(`  Mode: GitHub enrichment`);
     console.log(`  GITHUB_TOKEN: ${process.env.GITHUB_TOKEN ? '(set)' : '(not set)'}`);
     if (options.maxPackages) {

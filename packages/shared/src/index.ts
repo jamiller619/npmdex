@@ -12,3 +12,6 @@ export type {
 
 export { createDb } from './db.js';
 export type { Db } from './db.js';
+
+export { createRedisClient } from './redis.js';
+export type { RedisClient } from './redis.js';
