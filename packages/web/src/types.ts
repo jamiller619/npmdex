@@ -19,3 +19,5 @@ export interface SearchResponse {
   page: number;
   limit: number;
 }
+
+export type SortOption = 'relevance' | 'downloads' | 'score' | 'stars' | 'updated';

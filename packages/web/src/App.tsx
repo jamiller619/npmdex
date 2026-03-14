@@ -1,9 +1,19 @@
 import { useSearch } from './useSearch';
 import { PackageCard } from './PackageCard';
+import type { SortOption } from './types';
 import './styles.css';
 
+const SORT_OPTIONS: { value: SortOption; label: string }[] = [
+  { value: 'relevance', label: 'Relevance' },
+  { value: 'downloads', label: 'Downloads' },
+  { value: 'score', label: 'Score' },
+  { value: 'stars', label: 'Stars' },
+  { value: 'updated', label: 'Recently Updated' },
+];
+
 export function App() {
-  const { results, total, loading, query, setQuery } = useSearch();
+  const { results, total, loading, query, setQuery, sort, setSort, page, setPage, totalPages } =
+    useSearch();
 
   return (
     <div className="app">
@@ -22,6 +32,28 @@ export function App() {
           autoFocus
         />
       </div>
+
+      {query.trim() && (
+        <div className="toolbar">
+          <div className="sort-control">
+            <label htmlFor="sort-select" className="sort-label">
+              Sort by
+            </label>
+            <select
+              id="sort-select"
+              className="sort-select"
+              value={sort}
+              onChange={(e) => setSort(e.target.value as SortOption)}
+            >
+              {SORT_OPTIONS.map((opt) => (
+                <option key={opt.value} value={opt.value}>
+                  {opt.label}
+                </option>
+              ))}
+            </select>
+          </div>
+        </div>
+      )}
 
       <main className="results-container">
         {loading && (
@@ -48,6 +80,24 @@ export function App() {
                 <PackageCard key={pkg.name} pkg={pkg} />
               ))}
             </div>
+
+            {totalPages > 1 && (
+              <nav className="pagination" aria-label="Search results pages">
+                <button className="page-btn" onClick={() => setPage(page - 1)} disabled={page <= 1}>
+                  Previous
+                </button>
+                <span className="page-info">
+                  Page {page} of {totalPages}
+                </span>
+                <button
+                  className="page-btn"
+                  onClick={() => setPage(page + 1)}
+                  disabled={page >= totalPages}
+                >
+                  Next
+                </button>
+              </nav>
+            )}
           </>
         )}
       </main>

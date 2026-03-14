@@ -1,5 +1,5 @@
-import { useState, useEffect, useRef } from 'react';
-import type { PackageResult, SearchResponse } from './types';
+import { useState, useEffect, useRef, useCallback } from 'react';
+import type { PackageResult, SearchResponse, SortOption } from './types';
 
 interface UseSearchResult {
   results: PackageResult[];
@@ -7,14 +7,35 @@ interface UseSearchResult {
   loading: boolean;
   query: string;
   setQuery: (q: string) => void;
+  sort: SortOption;
+  setSort: (s: SortOption) => void;
+  page: number;
+  setPage: (p: number) => void;
+  totalPages: number;
+  limit: number;
 }
+
+const LIMIT = 20;
 
 export function useSearch(): UseSearchResult {
   const [query, setQuery] = useState('');
+  const [sort, setSort] = useState<SortOption>('relevance');
+  const [page, setPage] = useState(1);
   const [results, setResults] = useState<PackageResult[]>([]);
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(false);
   const abortRef = useRef<AbortController | null>(null);
+
+  // Reset page when query or sort changes
+  const handleSetQuery = useCallback((q: string) => {
+    setQuery(q);
+    setPage(1);
+  }, []);
+
+  const handleSetSort = useCallback((s: SortOption) => {
+    setSort(s);
+    setPage(1);
+  }, []);
 
   useEffect(() => {
     const trimmed = query.trim();
@@ -33,9 +54,9 @@ export function useSearch(): UseSearchResult {
       try {
         const params = new URLSearchParams({
           q: trimmed,
-          page: '1',
-          limit: '20',
-          sort: 'relevance',
+          page: String(page),
+          limit: String(LIMIT),
+          sort,
         });
         const res = await fetch(`/api/search?${params}`, {
           signal: controller.signal,
@@ -60,7 +81,21 @@ export function useSearch(): UseSearchResult {
     }, 300);
 
     return () => clearTimeout(timer);
-  }, [query]);
+  }, [query, sort, page]);
 
-  return { results, total, loading, query, setQuery };
+  const totalPages = Math.max(1, Math.ceil(total / LIMIT));
+
+  return {
+    results,
+    total,
+    loading,
+    query,
+    setQuery: handleSetQuery,
+    sort,
+    setSort: handleSetSort,
+    page,
+    setPage,
+    totalPages,
+    limit: LIMIT,
+  };
 }
