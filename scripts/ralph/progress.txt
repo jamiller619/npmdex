@@ -14,6 +14,10 @@ Started: Sat Mar 14 11:44:48 EDT 2026
 - Schema defined in `packages/shared/src/schema.ts`, types in `packages/shared/src/types.ts`
 - Run `npm run db:generate` in packages/shared to generate migrations, `npm run db:migrate` to apply
 - Must run `npm install` at root before `npm run typecheck` (hoisted node_modules)
+- Shared DB connection via `createDb()` from `@npmdex/shared` (uses DATABASE_URL env var)
+- Use `onConflictDoUpdate` for upsert patterns with Drizzle ORM
+- npm registry APIs: registry.npmjs.org for package info, replicate.npmjs.com/_changes for change feed, api.npmjs.org/downloads for download counts
+- Run `npm run format:fix` before committing to fix Prettier formatting
 
 ---
 
@@ -39,4 +43,22 @@ Started: Sat Mar 14 11:44:48 EDT 2026
   - Drizzle config is at `packages/shared/drizzle.config.ts` with DATABASE_URL env var
   - `InferSelectModel` and `InferInsertModel` from drizzle-orm to derive types from schema
   - Root `npm install` must be run first to get typescript in node_modules for typecheck
+---
+
+## 2026-03-14 - US-003
+- Built npm registry crawler in packages/index-service with full and incremental sync support
+- Created shared DB connection utility (`packages/shared/src/db.ts`) using drizzle-orm + node-postgres
+- Crawler uses CouchDB `/_changes` feed from replicate.npmjs.com for discovering packages
+- Fetches package metadata from registry.npmjs.org and weekly downloads from api.npmjs.org
+- Stores data in packages and package_metadata tables via upserts (onConflictDoUpdate)
+- 100ms delay between requests to respect rate limits
+- Sequence tracking via `.last-seq` file for incremental sync resume
+- CLI supports `--full-sync` and `--max-packages N` flags
+- Files changed: packages/index-service/src/index.ts, packages/index-service/src/crawler.ts (new), packages/index-service/src/registry.ts (new), packages/index-service/src/state.ts (new), packages/index-service/package.json, packages/shared/src/db.ts (new), packages/shared/src/index.ts
+- **Learnings for future iterations:**
+  - Node.js 24 has native `fetch` — no need for node-fetch dependency
+  - npm registry package JSON can be very large (includes all versions); for future optimization, use `Accept: application/vnd.npm.install-v1+json` header for abbreviated metadata
+  - Repository URL in registry data comes in various formats (git+https://, git://, .git suffix) — needs normalization
+  - CouchDB `/_changes` feed returns design docs (prefixed `_design/`) that should be skipped
+  - `tsx` is used to run TypeScript directly in index-service (`node --import tsx src/index.ts`)
 ---
