@@ -1,0 +1,189 @@
+{
+  "project": "npmdex",
+  "branchName": "ralph/npmdex-mvp",
+  "description": "npmdex — a better npm package search engine with rich metadata, quality scores, and fast in-memory search",
+  "userStories": [
+    {
+      "id": "US-001",
+      "title": "Set up monorepo structure",
+      "description": "As a developer, I need a well-organized monorepo so that all services share tooling, types, and configuration.",
+      "acceptanceCriteria": [
+        "Monorepo root with shared tsconfig base and workspace configuration (Node.js workspaces)",
+        "Workspaces for packages/index-service, packages/score-service, packages/api, packages/web, and packages/shared",
+        "Each workspace has its own package.json and tsconfig.json extending the root base",
+        "Shared ESLint and Prettier config at the root",
+        "Typecheck passes across all workspaces"
+      ],
+      "priority": 1,
+      "passes": true,
+      "notes": ""
+    },
+    {
+      "id": "US-002",
+      "title": "Define shared database schema and types",
+      "description": "As a developer, I need a PostgreSQL schema using Drizzle with TypeScript types so all services have a common data model.",
+      "acceptanceCriteria": [
+        "packages table with fields: name (PK), description, latest_version, license, homepage_url, repository_url, keywords (array), created_at, updated_at",
+        "package_metadata table with fields: package_name (FK), weekly_downloads, github_stars, github_open_issues, last_commit_date, has_typescript_support (enum: native, definitely-typed, none), readme_length, dependency_count",
+        "package_scores table with fields: package_name (FK), overall_score (0-100), popularity_score, maintenance_score, quality_score, scored_at",
+        "Migration scripts to create the schema (e.g. using a migration library or raw SQL files)",
+        "Shared TypeScript types/interfaces for all tables defined in packages/shared",
+        "Typecheck passes"
+      ],
+      "priority": 2,
+      "passes": true,
+      "notes": ""
+    },
+    {
+      "id": "US-003",
+      "title": "Build npm registry crawler",
+      "description": "As a system, I need to crawl the npm registry so that package data is available for search.",
+      "acceptanceCriteria": [
+        "index-service connects to the npm registry API and fetches package metadata",
+        "Stores name, description, latest version, license, homepage, repository URL, keywords, and weekly download counts in the packages and package_metadata tables",
+        "Supports both full sync (initial load) and incremental sync (new/updated packages since last run) using the CouchDB /_changes feed",
+        "Respects npm registry rate limits",
+        "Logs progress and errors to console",
+        "Writes results to PostgreSQL database",
+        "Typecheck passes"
+      ],
+      "priority": 3,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-004",
+      "title": "Build GitHub metadata enrichment",
+      "description": "As a system, I need to fetch GitHub stats for packages so that search results include repository health data.",
+      "acceptanceCriteria": [
+        "For packages with a GitHub repository URL, fetches: stars, open issues count, and last commit date via GitHub REST API v3",
+        "Uses GitHub personal access token from GITHUB_TOKEN env var for authentication",
+        "Handles packages without a GitHub repo gracefully (null values)",
+        "Respects GitHub API rate limits (~5000 req/hr authenticated)",
+        "Writes results to the package_metadata table",
+        "Typecheck passes"
+      ],
+      "priority": 4,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-005",
+      "title": "Build TypeScript support detection",
+      "description": "As a system, I need to detect whether a package supports TypeScript so users can filter and evaluate packages.",
+      "acceptanceCriteria": [
+        "Detects native TypeScript support (types/typings field in package.json)",
+        "Detects @types/* package availability on the npm registry",
+        "Stores result as enum: 'native', 'definitely-typed', or 'none' in has_typescript_support column",
+        "Integrated into the index-service crawl pipeline",
+        "Typecheck passes"
+      ],
+      "priority": 5,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-006",
+      "title": "Build the score service",
+      "description": "As a system, I need to compute an overall quality score for each package so users can quickly evaluate packages.",
+      "acceptanceCriteria": [
+        "Reads package data and metadata from PostgreSQL",
+        "Computes popularity sub-score from downloads and stars",
+        "Computes maintenance sub-score from last commit recency and open issues ratio",
+        "Computes quality sub-score from has_types, has_license, description length, low dependency count",
+        "Combines sub-scores into a single 0-100 overall score",
+        "Writes scores to the package_scores table with a scored_at timestamp",
+        "Only re-scores packages whose metadata updated_at is newer than scored_at",
+        "Runs as a batch job that can be triggered via CLI command",
+        "Typecheck passes"
+      ],
+      "priority": 6,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-007",
+      "title": "Set up Redis with RediSearch and populate search index",
+      "description": "As a system, I need the search data in an in-memory datastore so that queries are fast.",
+      "acceptanceCriteria": [
+        "docker-compose.yml at repo root with Redis Stack (redis/redis-stack) container exposing RediSearch",
+        "Redis connection config reads from environment variables (REDIS_HOST, REDIS_PORT) with localhost defaults",
+        "Index service populates Redis from PostgreSQL with package data, metadata, and scores",
+        "RediSearch schema created with full-text fields for name, description, and keywords",
+        "Numeric fields indexed for downloads, stars, score for sorting",
+        "Supports incremental updates (only changed packages re-indexed)",
+        "Index build/sync time is logged",
+        "Typecheck passes"
+      ],
+      "priority": 7,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-008",
+      "title": "Build the search API",
+      "description": "As a user, I need a search API so the frontend can query packages.",
+      "acceptanceCriteria": [
+        "API service added to docker-compose.yml, connects to the Redis Stack container on the Docker network",
+        "GET /api/search?q=<query>&page=<n>&limit=<n>&sort=<field> endpoint in packages/api",
+        "Returns: package name, description, latest version, weekly downloads, GitHub stars, last commit date, TypeScript support, overall score, keywords",
+        "Queries Redis/RediSearch for search — does NOT query PostgreSQL",
+        "Results ranked by relevance (weighted combination of text match score and overall quality score) by default",
+        "Supports sort parameter with values: relevance (default), downloads, score, stars, updated",
+        "Pagination with total count in response",
+        "Typecheck passes"
+      ],
+      "priority": 8,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-009",
+      "title": "Build search frontend — search input and results list",
+      "description": "As a user, I want a fast, clean search interface so I can find npm packages quickly.",
+      "acceptanceCriteria": [
+        "React + Vite app in packages/web",
+        "Search input with debounced querying (no submit button required)",
+        "Each result card shows: package name (links to npmjs.com), description, version, weekly downloads, GitHub stars, last commit date, TypeScript support badge, overall score, keywords",
+        "Repository link opens GitHub repo (external link)",
+        "Loading spinner and empty state handled",
+        "Typecheck passes",
+        "Verify in browser using dev-browser skill"
+      ],
+      "priority": 9,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-010",
+      "title": "Build search frontend — sort, pagination, and responsive design",
+      "description": "As a user, I want to sort and page through results on any device.",
+      "acceptanceCriteria": [
+        "Sort dropdown with options: Relevance, Downloads, Score, Stars, Recently Updated",
+        "Results are paginated (page controls or infinite scroll)",
+        "Clean, minimal design — information-dense but not cluttered",
+        "Mobile responsive layout",
+        "Typecheck passes",
+        "Verify in browser using dev-browser skill"
+      ],
+      "priority": 10,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-011",
+      "title": "Search relevance tuning",
+      "description": "As a user, I want search results that are more relevant than npmjs.com so I find the right package faster.",
+      "acceptanceCriteria": [
+        "Exact name match is always the first result",
+        "Partial name matches rank higher than description-only matches",
+        "Quality score is factored into ranking (high-quality packages surface above abandoned ones with similar text matches)",
+        "Common queries like 'react', 'express', 'lodash' return expected top results",
+        "Typecheck passes"
+      ],
+      "priority": 11,
+      "passes": false,
+      "notes": ""
+    }
+  ]
+}

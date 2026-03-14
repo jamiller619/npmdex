@@ -1,0 +1,42 @@
+# Ralph Progress Log
+Started: Sat Mar 14 11:44:48 EDT 2026
+---
+
+## Codebase Patterns
+- Node.js workspaces used for monorepo (packages/* in root package.json)
+- tsconfig.base.json at root; each workspace extends it with `"extends": "../../tsconfig.base.json"`
+- Each workspace references `../shared` in tsconfig `references` for project references
+- ESLint 9 flat config (eslint.config.mjs) with typescript-eslint
+- Root scripts: `npm run typecheck`, `npm run lint`, `npm run format`
+- All workspace packages are scoped under `@npmdex/`
+- Node.js v24.14.0 (.nvmrc)
+- Drizzle ORM for database schema definition and migrations in packages/shared
+- Schema defined in `packages/shared/src/schema.ts`, types in `packages/shared/src/types.ts`
+- Run `npm run db:generate` in packages/shared to generate migrations, `npm run db:migrate` to apply
+- Must run `npm install` at root before `npm run typecheck` (hoisted node_modules)
+
+---
+
+## 2026-03-14 - US-001
+- Set up monorepo with Node.js workspaces and 5 packages: shared, index-service, score-service, api, web
+- Created tsconfig.base.json with ES2022/Node16 module settings, composite project references
+- ESLint 9 flat config with typescript-eslint, Prettier with shared config
+- Files changed: package.json, tsconfig.base.json, eslint.config.mjs, .prettierrc, + 15 files in packages/*/
+- **Learnings for future iterations:**
+  - Use `tsc --build packages/*/tsconfig.json` for cross-workspace typecheck
+  - ESLint 9 uses flat config (eslint.config.mjs), not .eslintrc
+  - Each workspace has `@npmdex/shared` as a dependency for shared types
+---
+
+## 2026-03-14 - US-002
+- Defined PostgreSQL schema using Drizzle ORM with 3 tables: packages, package_metadata, package_scores
+- Created typescript_support enum type ('native', 'definitely-typed', 'none')
+- Generated initial migration via drizzle-kit (drizzle/0000_damp_landau.sql)
+- Exported Drizzle inferred types (Package, NewPackage, PackageMetadata, etc.) from packages/shared
+- Files changed: packages/shared/src/schema.ts (new), packages/shared/src/types.ts (new), packages/shared/src/index.ts, packages/shared/package.json, packages/shared/drizzle.config.ts (new), packages/shared/drizzle/* (new)
+- **Learnings for future iterations:**
+  - drizzle-kit generate creates SQL migrations from schema changes
+  - Drizzle config is at `packages/shared/drizzle.config.ts` with DATABASE_URL env var
+  - `InferSelectModel` and `InferInsertModel` from drizzle-orm to derive types from schema
+  - Root `npm install` must be run first to get typescript in node_modules for typecheck
+---
