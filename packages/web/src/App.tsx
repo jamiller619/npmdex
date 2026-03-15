@@ -1,7 +1,7 @@
-import { useSearch } from './useSearch';
-import { PackageCard } from './PackageCard';
-import type { SortOption } from './types';
-import './styles.css';
+import { useSearch } from './useSearch'
+import { PackageCard } from './PackageCard'
+import type { SortOption } from './types'
+import './styles.css'
 
 const SORT_OPTIONS: { value: SortOption; label: string }[] = [
   { value: 'relevance', label: 'Relevance' },
@@ -9,11 +9,21 @@ const SORT_OPTIONS: { value: SortOption; label: string }[] = [
   { value: 'score', label: 'Score' },
   { value: 'stars', label: 'Stars' },
   { value: 'updated', label: 'Recently Updated' },
-];
+]
 
 export function App() {
-  const { results, total, loading, query, setQuery, sort, setSort, page, setPage, totalPages } =
-    useSearch();
+  const {
+    results,
+    total,
+    loading,
+    query,
+    setQuery,
+    sort,
+    setSort,
+    page,
+    setPage,
+    totalPages,
+  } = useSearch()
 
   return (
     <div className="app">
@@ -63,7 +73,9 @@ export function App() {
         )}
 
         {!loading && query.trim() && results.length === 0 && (
-          <div className="empty-state">No packages found for &ldquo;{query.trim()}&rdquo;</div>
+          <div className="empty-state">
+            No packages found for &ldquo;{query.trim()}&rdquo;
+          </div>
         )}
 
         {!loading && !query.trim() && (
@@ -83,7 +95,11 @@ export function App() {
 
             {totalPages > 1 && (
               <nav className="pagination" aria-label="Search results pages">
-                <button className="page-btn" onClick={() => setPage(page - 1)} disabled={page <= 1}>
+                <button
+                  className="page-btn"
+                  onClick={() => setPage(page - 1)}
+                  disabled={page <= 1}
+                >
                   Previous
                 </button>
                 <span className="page-info">
@@ -102,5 +118,5 @@ export function App() {
         )}
       </main>
     </div>
-  );
+  )
 }

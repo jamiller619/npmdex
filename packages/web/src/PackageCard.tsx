@@ -1,26 +1,28 @@
-import type { PackageResult } from './types';
+import type { PackageResult } from './types'
 
 function formatDownloads(n: number): string {
-  if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`;
-  if (n >= 1_000) return `${(n / 1_000).toFixed(1)}K`;
-  return String(n);
+  if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`
+  if (n >= 1_000) return `${(n / 1_000).toFixed(1)}K`
+  return String(n)
 }
 
 function formatDate(iso: string | null): string {
-  if (!iso) return '—';
-  const d = new Date(iso);
-  const now = new Date();
-  const days = Math.floor((now.getTime() - d.getTime()) / 86_400_000);
-  if (days < 1) return 'today';
-  if (days < 30) return `${days}d ago`;
-  if (days < 365) return `${Math.floor(days / 30)}mo ago`;
-  return `${Math.floor(days / 365)}y ago`;
+  if (!iso) return '—'
+  const d = new Date(iso)
+  const now = new Date()
+  const days = Math.floor((now.getTime() - d.getTime()) / 86_400_000)
+  if (days < 1) return 'today'
+  if (days < 30) return `${days}d ago`
+  if (days < 365) return `${Math.floor(days / 30)}mo ago`
+  return `${Math.floor(days / 365)}y ago`
 }
 
 function tsBadge(support: string): React.ReactNode {
-  if (support === 'native') return <span className="badge badge-ts-native">TS</span>;
-  if (support === 'definitely-typed') return <span className="badge badge-ts-dt">DT</span>;
-  return null;
+  if (support === 'native')
+    return <span className="badge badge-ts-native">TS</span>
+  if (support === 'definitely-typed')
+    return <span className="badge badge-ts-dt">DT</span>
+  return null
 }
 
 export function PackageCard({ pkg }: { pkg: PackageResult }) {
@@ -42,10 +44,14 @@ export function PackageCard({ pkg }: { pkg: PackageResult }) {
         </span>
       </div>
 
-      {pkg.description && <p className="package-description">{pkg.description}</p>}
+      {pkg.description && (
+        <p className="package-description">{pkg.description}</p>
+      )}
 
       <div className="package-meta">
-        <span title="Weekly downloads">↓ {formatDownloads(pkg.weeklyDownloads)}</span>
+        <span title="Weekly downloads">
+          ↓ {formatDownloads(pkg.weeklyDownloads)}
+        </span>
         {pkg.githubStars > 0 && (
           <span title="GitHub stars">★ {formatDownloads(pkg.githubStars)}</span>
         )}
@@ -74,5 +80,5 @@ export function PackageCard({ pkg }: { pkg: PackageResult }) {
         </div>
       )}
     </div>
-  );
+  )
 }

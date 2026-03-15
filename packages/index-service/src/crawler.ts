@@ -5,39 +5,39 @@ import {
   type NewPackage,
   type NewPackageMetadata,
   type TypescriptSupport,
-} from '@npmdex/shared';
+} from '@npmdex/shared'
 import {
   fetchChanges,
   fetchPackageInfo,
   fetchWeeklyDownloads,
   type RegistryPackageInfo,
-} from './registry.js';
-import { readLastSeq, writeLastSeq } from './state.js';
-import { detectTypescriptSupport } from './typescript-detection.js';
+} from './registry.js'
+import { readLastSeq, writeLastSeq } from './state.js'
+import { detectTypescriptSupport } from './typescript-detection.js'
 
-const BATCH_SIZE = 250;
-const REQUEST_DELAY_MS = 100;
+const BATCH_SIZE = 250
+const REQUEST_DELAY_MS = 100
 
 function sleep(ms: number): Promise<void> {
-  return new Promise((resolve) => setTimeout(resolve, ms));
+  return new Promise((resolve) => setTimeout(resolve, ms))
 }
 
 function extractRepoUrl(info: RegistryPackageInfo): string | null {
-  if (!info.repository) return null;
-  if (typeof info.repository === 'string') return info.repository;
-  const url = info.repository.url;
-  if (!url) return null;
+  if (!info.repository) return null
+  if (typeof info.repository === 'string') return info.repository
+  const url = info.repository.url
+  if (!url) return null
   return url
     .replace(/^git\+/, '')
     .replace(/^git:\/\//, 'https://')
-    .replace(/\.git$/, '');
+    .replace(/\.git$/, '')
 }
 
 function getLatestDependencyCount(info: RegistryPackageInfo): number | null {
-  const latest = info['dist-tags']?.latest;
-  if (!latest || !info.versions?.[latest]) return null;
-  const deps = info.versions[latest].dependencies;
-  return deps ? Object.keys(deps).length : 0;
+  const latest = info['dist-tags']?.latest
+  if (!latest || !info.versions?.[latest]) return null
+  const deps = info.versions[latest].dependencies
+  return deps ? Object.keys(deps).length : 0
 }
 
 function toPackageRow(info: RegistryPackageInfo): NewPackage {
@@ -49,7 +49,7 @@ function toPackageRow(info: RegistryPackageInfo): NewPackage {
     homepageUrl: info.homepage ?? null,
     repositoryUrl: extractRepoUrl(info),
     keywords: info.keywords ?? null,
-  };
+  }
 }
 
 function toMetadataRow(
@@ -63,23 +63,23 @@ function toMetadataRow(
     readmeLength: info.readme?.length ?? null,
     dependencyCount: getLatestDependencyCount(info),
     hasTypescriptSupport: tsSupport,
-  };
+  }
 }
 
 async function processPackage(db: Db, name: string): Promise<boolean> {
-  const info = await fetchPackageInfo(name);
+  const info = await fetchPackageInfo(name)
   if (!info) {
-    console.log(`  [skip] ${name} — not found`);
-    return false;
+    console.log(`  [skip] ${name} — not found`)
+    return false
   }
 
   const [downloads, tsSupport] = await Promise.all([
     fetchWeeklyDownloads(name),
     detectTypescriptSupport(info),
-  ]);
+  ])
 
-  const pkgRow = toPackageRow(info);
-  const metaRow = toMetadataRow(info, downloads, tsSupport);
+  const pkgRow = toPackageRow(info)
+  const metaRow = toMetadataRow(info, downloads, tsSupport)
 
   await db
     .insert(packages)
@@ -95,7 +95,7 @@ async function processPackage(db: Db, name: string): Promise<boolean> {
         keywords: pkgRow.keywords,
         updatedAt: new Date(),
       },
-    });
+    })
 
   await db
     .insert(packageMetadata)
@@ -108,64 +108,72 @@ async function processPackage(db: Db, name: string): Promise<boolean> {
         dependencyCount: metaRow.dependencyCount,
         hasTypescriptSupport: metaRow.hasTypescriptSupport,
       },
-    });
+    })
 
-  return true;
+  return true
 }
 
 export interface CrawlOptions {
-  maxPackages?: number;
-  fullSync?: boolean;
+  maxPackages?: number
+  fullSync?: boolean
 }
 
 export async function crawl(db: Db, options: CrawlOptions = {}): Promise<void> {
-  const { maxPackages, fullSync = false } = options;
+  const { maxPackages, fullSync = false } = options
 
-  let since: string | number = fullSync ? 0 : (readLastSeq() ?? 0);
-  let processed = 0;
-  let errors = 0;
+  let since: string | number = fullSync ? 0 : (readLastSeq() ?? 0)
+  let processed = 0
+  let errors = 0
 
-  console.log(`Starting ${fullSync ? 'full' : 'incremental'} sync from seq: ${since}`);
+  console.log(
+    `Starting ${fullSync ? 'full' : 'incremental'} sync from seq: ${since}`,
+  )
 
   while (true) {
-    const changes = await fetchChanges(since, BATCH_SIZE);
+    const changes = await fetchChanges(since, BATCH_SIZE)
 
     if (changes.results.length === 0) {
-      console.log('No more changes to process.');
-      break;
+      console.log('No more changes to process.')
+      break
     }
 
     for (const change of changes.results) {
       if (maxPackages && processed >= maxPackages) {
-        console.log(`Reached max packages limit: ${maxPackages}`);
-        writeLastSeq(String(change.seq));
-        return;
+        console.log(`Reached max packages limit: ${maxPackages}`)
+        writeLastSeq(String(change.seq))
+        return
       }
 
       if (change.deleted || change.id.startsWith('_design/')) {
-        continue;
+        continue
       }
 
       try {
-        const ok = await processPackage(db, change.id);
+        const ok = await processPackage(db, change.id)
         if (ok) {
-          processed++;
+          processed++
           if (processed % 50 === 0) {
-            console.log(`  Processed ${processed} packages (errors: ${errors})`);
+            console.log(`  Processed ${processed} packages (errors: ${errors})`)
           }
         }
       } catch (err) {
-        errors++;
-        console.error(`  [error] ${change.id}: ${err instanceof Error ? err.message : err}`);
+        errors++
+        console.error(
+          `  [error] ${change.id}: ${err instanceof Error ? err.message : err}`,
+        )
       }
 
-      await sleep(REQUEST_DELAY_MS);
+      await sleep(REQUEST_DELAY_MS)
     }
 
-    since = changes.last_seq;
-    writeLastSeq(String(since));
-    console.log(`Batch complete. seq=${since}, processed=${processed}, errors=${errors}`);
+    since = changes.last_seq
+    writeLastSeq(String(since))
+    console.log(
+      `Batch complete. seq=${since}, processed=${processed}, errors=${errors}`,
+    )
   }
 
-  console.log(`Crawl finished. Total processed: ${processed}, errors: ${errors}`);
+  console.log(
+    `Crawl finished. Total processed: ${processed}, errors: ${errors}`,
+  )
 }
