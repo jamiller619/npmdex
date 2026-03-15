@@ -28,7 +28,7 @@ npmdex is a monorepo with five packages:
 ### 1. Install dependencies
 
 ```bash
-npm install
+yarn install
 ```
 
 ### 2. Configure environment
@@ -50,7 +50,7 @@ This starts PostgreSQL on port 5432 and Redis Stack on port 6379 (with RedisInsi
 ### 4. Run database migrations
 
 ```bash
-npm run db:push --workspace=packages/shared
+yarn workspace @npmdex/shared db:push
 ```
 
 ### 5. Build the search index
@@ -59,19 +59,19 @@ These are CLI tools you run as-needed or on a schedule:
 
 ```bash
 # Full sync from npm registry (first run)
-npm start --workspace=packages/index-service -- --full-sync
+yarn workspace @npmdex/index-service start --full-sync
 
 # Incremental sync (subsequent runs)
-npm start --workspace=packages/index-service -- --incremental
+yarn workspace @npmdex/index-service start --incremental
 
 # Enrich packages with GitHub metadata
-npm start --workspace=packages/index-service -- --enrich-github
+yarn workspace @npmdex/index-service start --enrich-github
 
 # Score all packages
-npm start --workspace=packages/score-service
+yarn workspace @npmdex/score-service start
 
 # Build the Redis search index
-npm start --workspace=packages/index-service -- --build-index
+yarn workspace @npmdex/index-service start --build-index
 ```
 
 Use `--max-packages <num>` to limit the number of packages processed (useful for testing).
@@ -79,7 +79,7 @@ Use `--max-packages <num>` to limit the number of packages processed (useful for
 ### 6. Start the API
 
 ```bash
-npm start --workspace=packages/api
+yarn workspace @npmdex/api start
 ```
 
 Runs on http://localhost:3001. Search endpoint: `GET /api/search?q=express&sort=relevance&page=1&limit=20`
@@ -87,7 +87,7 @@ Runs on http://localhost:3001. Search endpoint: `GET /api/search?q=express&sort=
 ### 7. Start the frontend
 
 ```bash
-npm run dev --workspace=packages/web
+yarn workspace @npmdex/web dev
 ```
 
 Runs on http://localhost:3000 and proxies `/api` requests to the API.
@@ -104,7 +104,7 @@ This starts:
 - **Redis Stack** on ports 6379 and 8001 (RedisInsight)
 - **API** on port 3001
 
-The web frontend is not included in the Docker setup — run it separately with `npm run dev --workspace=packages/web`.
+The web frontend is not included in the Docker setup — run it separately with `yarn workspace @npmdex/web dev`.
 
 ## Environment Variables
 
@@ -120,14 +120,14 @@ The web frontend is not included in the Docker setup — run it separately with 
 
 ```bash
 # Type-check all packages
-npm run typecheck
+yarn typecheck
 
 # Lint
-npm run lint
+yarn lint
 
 # Format check / auto-fix
-npm run format
-npm run format:fix
+yarn format
+yarn format:fix
 ```
 
 ### Database
@@ -136,9 +136,9 @@ The shared package uses Drizzle ORM. To modify the schema:
 
 ```bash
 # Edit packages/shared/src/schema.ts, then:
-npm run db:generate --workspace=packages/shared  # generate migration SQL
-npm run db:migrate --workspace=packages/shared   # run migrations
-npm run db:push --workspace=packages/shared      # or push directly
+yarn workspace @npmdex/shared db:generate  # generate migration SQL
+yarn workspace @npmdex/shared db:migrate   # run migrations
+yarn workspace @npmdex/shared db:push      # or push directly
 ```
 
 ### Project Structure

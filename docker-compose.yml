@@ -22,7 +22,7 @@ services:
 
   api:
     build: .
-    command: npm start --workspace=packages/api
+    command: yarn workspace @npmdex/api start
     ports:
       - '3001:3001'
     environment:
