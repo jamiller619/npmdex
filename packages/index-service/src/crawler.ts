@@ -1,3 +1,4 @@
+import { sql } from 'drizzle-orm'
 import {
   packages,
   packageMetadata,
@@ -16,11 +17,7 @@ import { readLastSeq, writeLastSeq } from './state.js'
 import { detectTypescriptSupport } from './typescript-detection.js'
 
 const BATCH_SIZE = 250
-const REQUEST_DELAY_MS = 100
-
-function sleep(ms: number): Promise<void> {
-  return new Promise((resolve) => setTimeout(resolve, ms))
-}
+import { availableParallelism } from 'node:os'
 
 function extractRepoUrl(info: RegistryPackageInfo): string | null {
   if (!info.repository) return null
@@ -66,67 +63,74 @@ function toMetadataRow(
   }
 }
 
-async function processPackage(db: Db, name: string): Promise<boolean> {
+interface FetchedPackage {
+  pkgRow: NewPackage
+  metaRow: NewPackageMetadata
+}
+
+async function fetchPackage(name: string): Promise<FetchedPackage | null> {
   const info = await fetchPackageInfo(name)
-  if (!info) {
-    console.log(`  [skip] ${name} — not found`)
-    return false
-  }
+  if (!info) return null
 
   const [downloads, tsSupport] = await Promise.all([
     fetchWeeklyDownloads(name),
     detectTypescriptSupport(info),
   ])
 
-  const pkgRow = toPackageRow(info)
-  const metaRow = toMetadataRow(info, downloads, tsSupport)
+  return {
+    pkgRow: toPackageRow(info),
+    metaRow: toMetadataRow(info, downloads, tsSupport),
+  }
+}
+
+async function flushToDb(db: Db, rows: FetchedPackage[]): Promise<void> {
+  if (rows.length === 0) return
 
   await db
     .insert(packages)
-    .values(pkgRow)
+    .values(rows.map((r) => r.pkgRow))
     .onConflictDoUpdate({
       target: packages.name,
       set: {
-        description: pkgRow.description,
-        latestVersion: pkgRow.latestVersion,
-        license: pkgRow.license,
-        homepageUrl: pkgRow.homepageUrl,
-        repositoryUrl: pkgRow.repositoryUrl,
-        keywords: pkgRow.keywords,
+        description: sql`excluded.description`,
+        latestVersion: sql`excluded.latest_version`,
+        license: sql`excluded.license`,
+        homepageUrl: sql`excluded.homepage_url`,
+        repositoryUrl: sql`excluded.repository_url`,
+        keywords: sql`excluded.keywords`,
         updatedAt: new Date(),
       },
     })
 
   await db
     .insert(packageMetadata)
-    .values(metaRow)
+    .values(rows.map((r) => r.metaRow))
     .onConflictDoUpdate({
       target: packageMetadata.packageName,
       set: {
-        weeklyDownloads: metaRow.weeklyDownloads,
-        readmeLength: metaRow.readmeLength,
-        dependencyCount: metaRow.dependencyCount,
-        hasTypescriptSupport: metaRow.hasTypescriptSupport,
+        weeklyDownloads: sql`excluded.weekly_downloads`,
+        readmeLength: sql`excluded.readme_length`,
+        dependencyCount: sql`excluded.dependency_count`,
+        hasTypescriptSupport: sql`excluded.has_typescript_support`,
       },
     })
-
-  return true
 }
 
 export interface CrawlOptions {
   maxPackages?: number
   fullSync?: boolean
+  concurrency?: number
 }
 
 export async function crawl(db: Db, options: CrawlOptions = {}): Promise<void> {
-  const { maxPackages, fullSync = false } = options
+  const { maxPackages, fullSync = false, concurrency = availableParallelism() } = options
 
   let since: string | number = fullSync ? 0 : (readLastSeq() ?? 0)
   let processed = 0
   let errors = 0
 
   console.log(
-    `Starting ${fullSync ? 'full' : 'incremental'} sync from seq: ${since}`,
+    `Starting ${fullSync ? 'full' : 'incremental'} sync from seq: ${since} (concurrency: ${concurrency})`,
   )
 
   while (true) {
@@ -137,33 +141,43 @@ export async function crawl(db: Db, options: CrawlOptions = {}): Promise<void> {
       break
     }
 
+    const names: string[] = []
     for (const change of changes.results) {
-      if (maxPackages && processed >= maxPackages) {
-        console.log(`Reached max packages limit: ${maxPackages}`)
-        writeLastSeq(String(change.seq))
-        return
-      }
+      if (maxPackages && processed + names.length >= maxPackages) break
+      if (change.deleted || change.id.startsWith('_design/')) continue
+      names.push(change.id)
+    }
 
-      if (change.deleted || change.id.startsWith('_design/')) {
-        continue
-      }
+    // Process in concurrent chunks
+    for (let i = 0; i < names.length; i += concurrency) {
+      const chunk = names.slice(i, i + concurrency)
+      const results = await Promise.allSettled(
+        chunk.map((name) => fetchPackage(name)),
+      )
 
-      try {
-        const ok = await processPackage(db, change.id)
-        if (ok) {
+      const rows: FetchedPackage[] = []
+      for (let j = 0; j < results.length; j++) {
+        const result = results[j]
+        if (result.status === 'fulfilled' && result.value) {
+          rows.push(result.value)
           processed++
-          if (processed % 50 === 0) {
-            console.log(`  Processed ${processed} packages (errors: ${errors})`)
-          }
+        } else if (result.status === 'rejected') {
+          errors++
+          console.error(
+            `  [error] ${chunk[j]}: ${result.reason instanceof Error ? result.reason.message : result.reason}`,
+          )
         }
-      } catch (err) {
-        errors++
-        console.error(
-          `  [error] ${change.id}: ${err instanceof Error ? err.message : err}`,
-        )
       }
 
-      await sleep(REQUEST_DELAY_MS)
+      await flushToDb(db, rows)
+
+      if (processed % 50 < concurrency && processed >= 50) {
+        console.log(`  Processed ${processed} packages (errors: ${errors})`)
+      }
+    }
+
+    if (maxPackages && processed >= maxPackages) {
+      console.log(`Reached max packages limit: ${maxPackages}`)
     }
 
     since = changes.last_seq
@@ -171,6 +185,8 @@ export async function crawl(db: Db, options: CrawlOptions = {}): Promise<void> {
     console.log(
       `Batch complete. seq=${since}, processed=${processed}, errors=${errors}`,
     )
+
+    if (maxPackages && processed >= maxPackages) return
   }
 
   console.log(

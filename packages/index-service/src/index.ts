@@ -1,8 +1,11 @@
+import { availableParallelism } from 'node:os'
 import { parseArgs } from 'node:util'
 import { createDb, createRedisClient } from '@npmdex/shared'
 import { crawl } from './crawler.js'
 import { enrichGitHub } from './enrich-github.js'
 import { buildSearchIndex } from './redis-indexer.js'
+
+process.loadEnvFile('../../.env')
 
 async function main() {
   const { values: options } = parseArgs({
@@ -12,6 +15,7 @@ async function main() {
       'build-index': { type: 'boolean', default: false },
       incremental: { type: 'boolean', default: false },
       'max-packages': { type: 'string' },
+      concurrency: { type: 'string', default: String(availableParallelism()) },
     },
   })
 
@@ -22,6 +26,7 @@ async function main() {
   const maxPackages = options['max-packages']
     ? parseInt(options['max-packages'], 10)
     : undefined
+  const concurrency = parseInt(options['concurrency']!, 10)
 
   console.log('npmdex index-service')
   console.log(
@@ -59,7 +64,8 @@ async function main() {
     if (maxPackages) {
       console.log(`  Max packages: ${maxPackages}`)
     }
-    await crawl(db, { fullSync, maxPackages })
+    console.log(`  Concurrency: ${concurrency}`)
+    await crawl(db, { fullSync, maxPackages, concurrency })
   }
 }
 
