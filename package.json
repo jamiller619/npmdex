@@ -1,5 +1,6 @@
 {
   "name": "npmdex",
+  "description": "A faster, smarter search engine for npm packages with better discovery than npmjs.com.",
   "version": "1.0.0",
   "private": true,
   "type": "module",
