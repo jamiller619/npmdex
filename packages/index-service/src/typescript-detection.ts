@@ -1,5 +1,6 @@
-import type { RegistryPackageInfo } from './registry.js'
 import type { TypescriptSupport } from '@npmdex/shared'
+
+import type { RegistryPackageInfo } from './registry.js'
 
 const REGISTRY_URL = 'https://registry.npmjs.org'
 

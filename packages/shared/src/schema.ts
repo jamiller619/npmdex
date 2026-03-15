@@ -1,10 +1,10 @@
 import {
+  integer,
+  pgEnum,
   pgTable,
+  real,
   text,
   timestamp,
-  integer,
-  real,
-  pgEnum,
 } from 'drizzle-orm/pg-core'
 
 export const typescriptSupportEnum = pgEnum('typescript_support', [

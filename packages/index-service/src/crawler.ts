@@ -1,23 +1,25 @@
-import { sql } from 'drizzle-orm'
+import { availableParallelism } from 'node:os'
+
 import {
-  packages,
-  packageMetadata,
   type Db,
   type NewPackage,
   type NewPackageMetadata,
   type TypescriptSupport,
+  packageMetadata,
+  packages,
 } from '@npmdex/shared'
+import { sql } from 'drizzle-orm'
+
 import {
+  type RegistryPackageInfo,
   fetchChanges,
   fetchPackageInfo,
   fetchWeeklyDownloads,
-  type RegistryPackageInfo,
 } from './registry.js'
 import { readLastSeq, writeLastSeq } from './state.js'
 import { detectTypescriptSupport } from './typescript-detection.js'
 
 const BATCH_SIZE = 250
-import { availableParallelism } from 'node:os'
 
 function extractRepoUrl(info: RegistryPackageInfo): string | null {
   if (!info.repository) return null
@@ -123,7 +125,11 @@ export interface CrawlOptions {
 }
 
 export async function crawl(db: Db, options: CrawlOptions = {}): Promise<void> {
-  const { maxPackages, fullSync = false, concurrency = availableParallelism() } = options
+  const {
+    maxPackages,
+    fullSync = false,
+    concurrency = availableParallelism(),
+  } = options
 
   let since: string | number = fullSync ? 0 : (readLastSeq() ?? 0)
   let processed = 0

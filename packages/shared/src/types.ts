@@ -1,5 +1,6 @@
-import type { InferSelectModel, InferInsertModel } from 'drizzle-orm'
-import type { packages, packageMetadata, packageScores } from './schema.js'
+import type { InferInsertModel, InferSelectModel } from 'drizzle-orm'
+
+import type { packageMetadata, packageScores, packages } from './schema.js'
 
 export type Package = InferSelectModel<typeof packages>
 export type NewPackage = InferInsertModel<typeof packages>

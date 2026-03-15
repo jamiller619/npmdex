@@ -1,7 +1,7 @@
-import { useSearch } from './useSearch'
 import { PackageCard } from './PackageCard'
-import type { SortOption } from './types'
 import './styles.css'
+import type { SortOption } from './types'
+import { useSearch } from './useSearch'
 
 const SORT_OPTIONS: { value: SortOption; label: string }[] = [
   { value: 'relevance', label: 'Relevance' },

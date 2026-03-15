@@ -1,6 +1,8 @@
 import { availableParallelism } from 'node:os'
 import { parseArgs } from 'node:util'
+
 import { createDb, createRedisClient } from '@npmdex/shared'
+
 import { crawl } from './crawler.js'
 import { enrichGitHub } from './enrich-github.js'
 import { buildSearchIndex } from './redis-indexer.js'

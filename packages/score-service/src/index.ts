@@ -1,4 +1,5 @@
 import { createDb } from '@npmdex/shared'
+
 import { scorePackages } from './scorer.js'
 
 function parseArgs(args: string[]) {

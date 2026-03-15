@@ -1,6 +1,6 @@
-import { eq, gt, isNull, or } from 'drizzle-orm'
-import { packages, packageMetadata, packageScores } from '@npmdex/shared'
+import { packageMetadata, packageScores, packages } from '@npmdex/shared'
 import type { Db } from '@npmdex/shared'
+import { eq, gt, isNull, or } from 'drizzle-orm'
 
 /**
  * Compute popularity sub-score (0-100) from downloads and stars.

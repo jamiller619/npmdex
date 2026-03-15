@@ -1,9 +1,9 @@
 import {
-  packages,
-  packageMetadata,
-  packageScores,
   type Db,
   type RedisClient,
+  packageMetadata,
+  packageScores,
+  packages,
 } from '@npmdex/shared'
 import { eq, gt, isNull, or } from 'drizzle-orm'
 

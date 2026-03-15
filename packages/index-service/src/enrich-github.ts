@@ -1,9 +1,10 @@
+import { type Db, packageMetadata, packages } from '@npmdex/shared'
 import { eq, isNotNull } from 'drizzle-orm'
-import { packages, packageMetadata, type Db } from '@npmdex/shared'
+
 import {
-  parseGitHubRepo,
-  fetchGitHubRepoInfo,
   checkRateLimit,
+  fetchGitHubRepoInfo,
+  parseGitHubRepo,
 } from './github.js'
 
 const REQUEST_DELAY_MS = 100

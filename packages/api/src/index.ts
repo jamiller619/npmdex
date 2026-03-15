@@ -1,6 +1,7 @@
-import express from 'express'
-import cors from 'cors'
 import { createRedisClient } from '@npmdex/shared'
+import cors from 'cors'
+import express from 'express'
+
 import { searchPackages } from './search.js'
 
 const app = express()
@@ -20,11 +21,9 @@ app.get('/api/search', async (req, res) => {
 
     const validSorts = ['relevance', 'downloads', 'score', 'stars', 'updated']
     if (!validSorts.includes(sort)) {
-      res
-        .status(400)
-        .json({
-          error: `Invalid sort. Must be one of: ${validSorts.join(', ')}`,
-        })
+      res.status(400).json({
+        error: `Invalid sort. Must be one of: ${validSorts.join(', ')}`,
+      })
       return
     }
 
