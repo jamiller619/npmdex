@@ -6,13 +6,13 @@ A better npm package search engine. Provides more relevant search results, rich 
 
 npmdex is a monorepo with five packages:
 
-| Package | Description | Runtime |
-|---------|-------------|---------|
-| **api** | Express REST API serving search queries via RediSearch | Cloud |
-| **web** | React + Vite frontend | Cloud |
-| **index-service** | Crawls npm registry, enriches with GitHub data, builds Redis index | Local/scheduled |
-| **score-service** | Computes quality/health scores for packages | Local/scheduled |
-| **shared** | Database schema (Drizzle ORM), types, and DB/Redis client factories | Library |
+| Package           | Description                                                         | Runtime         |
+| ----------------- | ------------------------------------------------------------------- | --------------- |
+| **api**           | Express REST API serving search queries via RediSearch              | Cloud           |
+| **web**           | React + Vite frontend                                               | Cloud           |
+| **index-service** | Crawls npm registry, enriches with GitHub data, builds Redis index  | Local/scheduled |
+| **score-service** | Computes quality/health scores for packages                         | Local/scheduled |
+| **shared**        | Database schema (Drizzle ORM), types, and DB/Redis client factories | Library         |
 
 **Data flow:** `index-service` crawls npm → writes to PostgreSQL → `score-service` scores packages → `index-service --build-index` pushes data to Redis → `api` queries Redis → `web` displays results.
 
@@ -101,6 +101,7 @@ docker compose up --build
 ```
 
 This starts:
+
 - **Redis Stack** on ports 6379 and 8001 (RedisInsight)
 - **API** on port 3001
 
@@ -108,13 +109,13 @@ The web frontend is not included in the Docker setup — run it separately with 
 
 ## Environment Variables
 
-| Variable | Default | Description |
-|----------|---------|-------------|
-| `DATABASE_URL` | `postgresql://postgres:postgres@localhost:5432/npmdex` | PostgreSQL connection string |
-| `REDIS_HOST` | `localhost` | Redis hostname |
-| `REDIS_PORT` | `6379` | Redis port |
-| `GITHUB_TOKEN` | — | GitHub PAT for higher API rate limits |
-| `PORT` | `3001` | API server port |
+| Variable       | Default                                                | Description                           |
+| -------------- | ------------------------------------------------------ | ------------------------------------- |
+| `DATABASE_URL` | `postgresql://postgres:postgres@localhost:5432/npmdex` | PostgreSQL connection string          |
+| `REDIS_HOST`   | `localhost`                                            | Redis hostname                        |
+| `REDIS_PORT`   | `6379`                                                 | Redis port                            |
+| `GITHUB_TOKEN` | —                                                      | GitHub PAT for higher API rate limits |
+| `PORT`         | `3001`                                                 | API server port                       |
 
 ## Development
 
@@ -166,13 +167,13 @@ Each package gets an overall score (0–100) composed of:
 GET /api/search
 ```
 
-| Param | Default | Description |
-|-------|---------|-------------|
-| `q` | — | Search query |
-| `page` | `1` | Page number |
-| `limit` | `20` | Results per page (1–100) |
-| `sort` | `relevance` | `relevance`, `downloads`, `score`, `stars`, or `updated` |
+| Param   | Default     | Description                                              |
+| ------- | ----------- | -------------------------------------------------------- |
+| `q`     | —           | Search query                                             |
+| `page`  | `1`         | Page number                                              |
+| `limit` | `20`        | Results per page (1–100)                                 |
+| `sort`  | `relevance` | `relevance`, `downloads`, `score`, `stars`, or `updated` |
 
 ## License
 
-ISC
+MIT License. See [LICENSE](LICENSE) for details.
