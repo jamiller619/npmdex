@@ -2,3 +2,10 @@ node_modules
 
 scripts/ralph
 tasks
+
+dist
+
+*.tsbuildinfo
+
+*.env
+!.env.example
